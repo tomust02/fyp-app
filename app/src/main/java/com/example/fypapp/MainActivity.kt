@@ -46,7 +46,8 @@ class MainActivity() : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        databaseRef = FirebaseDatabase.getInstance().getReference("heart_rate")
+        databaseRef = FirebaseDatabase.getInstance().getReference()
+        heartRateTextView = findViewById(R.id.heart_rate)
 
 
 
@@ -95,23 +96,16 @@ class MainActivity() : AppCompatActivity() {
     }
 
     private fun readdate(){
-        val databaseRef = FirebaseDatabase.getInstance().getReference("heart_rate")
-
-        val postListener = object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val heartRateData = dataSnapshot.getValue(HeartRateData::class.java)
-                binding.heartRate.text = heartRateData?.let {
-                    "Heart Rate: ${it.heart_rate} bpm"
-                } ?: "No data available"
+        databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val heartRate = snapshot.getValue(String::class.java)
+                heartRateTextView.text = "$heartRate bpm"
             }
 
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.w("FirebaseError", "loadPost:onCancelled", databaseError.toException())
-                binding.heartRate.text = "Error: ${databaseError.message}"
+            override fun onCancelled(error: DatabaseError) {
+                // Handle possible errors.
             }
-        }
-
-        databaseRef.addValueEventListener(postListener)
+        })
     }
 
 

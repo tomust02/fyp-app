@@ -49,14 +49,6 @@ class MainActivity() : AppCompatActivity() {
         databaseRef = FirebaseDatabase.getInstance().getReference()
         heartRateTextView = findViewById(R.id.heart_rate)
 
-
-
-        // Initialize the TextView using View Binding
-        // This assumes your TextView in the layout has the ID heart_rate
-        //val heartRateTextView = binding.heartRate
-
-//        heartRateTextView = findViewById(R.id.heart_rate)
-
         //test firebase connection
 //        databaseRef = FirebaseDatabase.getInstance().getReference("test")
 //
@@ -69,9 +61,7 @@ class MainActivity() : AppCompatActivity() {
 
         readdate()
 
-//
-//        firebaseRef = FirebaseDatabase.getInstance().getReference()
-//        binding.heartRate.setOnClickListener{}
+
 
 //        //Firestore
 //        val db=FirebaseFirestore.getInstance()

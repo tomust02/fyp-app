@@ -37,12 +37,14 @@
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:icon="@drawable/baseline_account_box_24"
                 android:text="Home" />
 
             <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Test" />
+                android:icon="@drawable/baseline_accessibility_24"
+                android:text="Posture" />
 
         </com.google.android.material.tabs.TabLayout>
 

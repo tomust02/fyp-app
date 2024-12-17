@@ -25,6 +25,10 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
+import androidx.viewpager2.widget.ViewPager2
+import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 
 data class HeartRateData(val heart_rate: String = "")
 
@@ -58,10 +62,8 @@ class MainActivity() : AppCompatActivity() {
 //                    Toast.makeText(this,"data stroed seccessfully", Toast.LENGTH_LONG)
 //                }
 //        }
-
+        setupTabBar()
         readdate()
-
-
 
 //        //Firestore
 //        val db=FirebaseFirestore.getInstance()
@@ -83,6 +85,36 @@ class MainActivity() : AppCompatActivity() {
 //                Log.d("errordb", "get failed with ", exception)
 //            }
 
+    }
+
+    private fun setupTabBar() {
+        val adapter = TabPageAdapter(this, 2)
+        binding.viewPager.adapter = adapter
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "Home"
+                1 -> "Test"
+                else -> "Home"
+            }
+        }.attach()
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                binding.tabLayout.selectTab(binding.tabLayout.getTabAt(position))
+            }
+        })
+
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                binding.viewPager.currentItem = tab.position
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {
+                // No action needed
+            }
+
+            override fun onTabReselected(tab: TabLayout.Tab?) {
+                // No action needed
+            }
+        })
     }
 
     private fun readdate(){

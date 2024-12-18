@@ -63,7 +63,7 @@ class MainActivity() : AppCompatActivity() {
 //                }
 //        }
         setupTabBar()
-        readdate()
+//        readdate()
 
 //        //Firestore
 //        val db=FirebaseFirestore.getInstance()
@@ -117,18 +117,18 @@ class MainActivity() : AppCompatActivity() {
         })
     }
 
-    private fun readdate(){
-        databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val heartRate = snapshot.getValue(String::class.java)
-                heartRateTextView.text = "$heartRate"
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                // Handle possible errors.
-            }
-        })
-    }
+//    private fun readdate(){
+//        databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
+//            override fun onDataChange(snapshot: DataSnapshot) {
+//                val heartRate = snapshot.getValue(String::class.java)
+//                heartRateTextView.text = "$heartRate"
+//            }
+//
+//            override fun onCancelled(error: DatabaseError) {
+//                // Handle possible errors.
+//            }
+//        })
+//    }
 
 
 

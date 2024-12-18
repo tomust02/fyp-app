@@ -121,7 +121,7 @@ class MainActivity() : AppCompatActivity() {
         databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val heartRate = snapshot.getValue(String::class.java)
-                heartRateTextView.text = "$heartRate bpm"
+                heartRateTextView.text = "$heartRate"
             }
 
             override fun onCancelled(error: DatabaseError) {

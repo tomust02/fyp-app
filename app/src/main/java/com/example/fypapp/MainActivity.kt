@@ -16,6 +16,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import com.example.fypapp.databinding.ActivityMainBinding
 import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
@@ -29,6 +30,10 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 
 data class HeartRateData(val heart_rate: String = "")
 
@@ -52,6 +57,10 @@ class MainActivity() : AppCompatActivity() {
 
         databaseRef = FirebaseDatabase.getInstance().getReference()
         heartRateTextView = findViewById(R.id.heart_rate)
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1)
+        }
 
         //test firebase connection
 //        databaseRef = FirebaseDatabase.getInstance().getReference("test")
@@ -115,6 +124,18 @@ class MainActivity() : AppCompatActivity() {
                 // No action needed
             }
         })
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) {
+            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                // Permission granted, you can now access the camera
+            } else {
+                // Permission denied, show a message to the user
+                Toast.makeText(this, "Camera permission is required to use the camera", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
 //    private fun readdate(){

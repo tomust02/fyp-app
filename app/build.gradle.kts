@@ -40,7 +40,7 @@ android {
         viewBinding = true
     }
 }
-
+val cameraxVersion = "1.1.0-beta01"
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -55,7 +55,11 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    val cameraxVersion = "1.1.0-beta01"
+    //weather
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("com.squareup.okhttp3:logging-interceptor:4.9.0")
+
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)

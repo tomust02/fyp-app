@@ -35,7 +35,20 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Query
+import java.text.SimpleDateFormat
+import java.util.*
+
 data class HeartRateData(val heart_rate: String = "")
+
 
 class MainActivity() : AppCompatActivity() {
 
@@ -46,6 +59,8 @@ class MainActivity() : AppCompatActivity() {
     private  lateinit var databaseRef : DatabaseReference
     private lateinit var heartRateTextView: TextView
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         //such that you can show text view
@@ -54,9 +69,6 @@ class MainActivity() : AppCompatActivity() {
         //real time
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        databaseRef = FirebaseDatabase.getInstance().getReference()
-        heartRateTextView = findViewById(R.id.heart_rate)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1)
@@ -71,8 +83,8 @@ class MainActivity() : AppCompatActivity() {
 //                    Toast.makeText(this,"data stroed seccessfully", Toast.LENGTH_LONG)
 //                }
 //        }
+
         setupTabBar()
-//        readdate()
 
 //        //Firestore
 //        val db=FirebaseFirestore.getInstance()
@@ -95,6 +107,8 @@ class MainActivity() : AppCompatActivity() {
 //            }
 
     }
+
+
 
     private fun setupTabBar() {
         val adapter = TabPageAdapter(this, 2)
@@ -137,19 +151,6 @@ class MainActivity() : AppCompatActivity() {
             }
         }
     }
-
-//    private fun readdate(){
-//        databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
-//            override fun onDataChange(snapshot: DataSnapshot) {
-//                val heartRate = snapshot.getValue(String::class.java)
-//                heartRateTextView.text = "$heartRate"
-//            }
-//
-//            override fun onCancelled(error: DatabaseError) {
-//                // Handle possible errors.
-//            }
-//        })
-//    }
 
 
 }

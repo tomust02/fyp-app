@@ -48,6 +48,7 @@ class TestFragment : Fragment() {
                 cameraProvider.bindToLifecycle(this as LifecycleOwner, cameraSelector, preview)
             } catch (exc: Exception) {
                 // Handle exceptions
+                exc.printStackTrace()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
@@ -55,6 +56,8 @@ class TestFragment : Fragment() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (requestCode == 1 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startCamera()
+        } else {
+            // Handle the case where permission is not granted
         }
     }
 

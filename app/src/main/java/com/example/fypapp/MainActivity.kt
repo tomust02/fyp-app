@@ -70,9 +70,7 @@ class MainActivity() : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1)
-        }
+
 
         //test firebase connection
 //        databaseRef = FirebaseDatabase.getInstance().getReference("test")
@@ -140,17 +138,7 @@ class MainActivity() : AppCompatActivity() {
         })
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1) {
-            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                // Permission granted, you can now access the camera
-            } else {
-                // Permission denied, show a message to the user
-                Toast.makeText(this, "Camera permission is required to use the camera", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+
 
 
 }

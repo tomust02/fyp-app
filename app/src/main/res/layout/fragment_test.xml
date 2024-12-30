@@ -14,9 +14,5 @@
         android:background="#80000000"
         android:textColor="#FFFFFF" />
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/previewView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
 
 </FrameLayout>

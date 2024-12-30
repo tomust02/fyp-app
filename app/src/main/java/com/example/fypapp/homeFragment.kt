@@ -114,8 +114,8 @@ class HomeFragment : Fragment() {
         // Read heart rate data
         databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val heartRate = snapshot.getValue(String::class.java)
-                heartRateTextView.text = heartRate ?: "N/A"
+                val heartRate = snapshot.getValue(Int::class.java)
+                heartRateTextView.text = heartRate?.toString() ?: "N/A"
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -126,8 +126,8 @@ class HomeFragment : Fragment() {
         // Read spo2 data
         databaseRef.child("SPO2").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val spo2 = snapshot.getValue(String::class.java)
-                spo2TextView.text = spo2 ?: "N/A"
+                val spo2 = snapshot.getValue(Int::class.java)
+                spo2TextView.text = spo2?.toString() ?: "N/A"
             }
             override fun onCancelled(error: DatabaseError) {
                 // Handle possible errors.

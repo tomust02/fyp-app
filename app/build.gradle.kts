@@ -85,4 +85,23 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
 
+    // ML Kit dependencies
+    implementation("com.google.mlkit:pose-detection:18.0.0-beta3")
+    implementation("com.google.mlkit:pose-detection-accurate:18.0.0-beta3")
+    implementation("com.google.mlkit:camera:16.0.0-beta3")
+
+    // CameraX dependencies
+    implementation("androidx.camera:camera-core:1.3.0")
+    implementation("androidx.camera:camera-camera2:1.3.0")
+    implementation("androidx.camera:camera-lifecycle:1.3.0")
+    implementation("androidx.camera:camera-view:1.3.0")
+
+
+    // Navigation
+    val nav_version = "2.7.6"
+    implementation("androidx.navigation:navigation-fragment-ktx:$nav_version")
+    implementation("androidx.navigation:navigation-ui-ktx:$nav_version")
+
+    // Lottie Animation
+    implementation("com.airbnb.android:lottie:6.1.0")
 }

@@ -2,7 +2,9 @@ package com.example.fypapp
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,12 +14,17 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.fypapp.databinding.FragmentTestBinding
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.pose.Pose
 import com.google.mlkit.vision.pose.PoseDetection
 import com.google.mlkit.vision.pose.PoseDetector
 import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
-import com.google.mlkit.vision.pose.Pose
-import com.google.mlkit.vision.pose.PoseLandmark
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -26,12 +33,17 @@ class TestFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var poseDetector: PoseDetector
+    private lateinit var database: DatabaseReference
 
     private var correctCount = 0
     private var incorrectCount = 0
     private var currentState = "STANDING"
     private var isFullBodyVisible = false
     private var currentKneeAngle: Float = 0f
+    private var heartRate = 0
+    private var spO2 = 0
+    private var isExercisePaused = false
+    private var warningMessage = StringBuilder()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,7 +56,70 @@ class TestFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        database = Firebase.database("https://fyp2024-abd3c-default-rtdb.firebaseio.com/").reference
 
+        setupCamera()
+        setupVitalSignsMonitoring()
+        updateCounters()
+        updateState()
+    }
+
+    private fun setupVitalSignsMonitoring() {
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                heartRate = (snapshot.child("heart_rate").value as? Long)?.toInt() ?: 0
+                spO2 = (snapshot.child("SPO2").value as? Long)?.toInt() ?: 0
+
+                activity?.runOnUiThread {
+                    updateVitalSignsDisplay()
+                    checkVitalSigns()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Error: ${error.message}")
+            }
+        })
+    }
+
+    private fun checkVitalSigns() {
+        warningMessage.clear()
+        var shouldPause = false
+
+        when {
+            heartRate < 60 -> {
+                warningMessage.append("WARNING!\n\nHeart rate too low!\n($heartRate bpm)\n\nPlease take a rest!")
+                shouldPause = true
+            }
+            heartRate > 100 -> {
+                warningMessage.append("WARNING!\n\nHeart rate too high!\n($heartRate bpm)\n\nPlease take a rest!")
+                shouldPause = true
+            }
+        }
+
+        if (spO2 < 95) {
+            if (warningMessage.isNotEmpty()) warningMessage.append("\n\n")
+            warningMessage.append("WARNING!\n\nSpO2 too low!\n($spO2%)\n\nPlease take a rest!")
+            shouldPause = true
+        }
+
+        isExercisePaused = shouldPause
+
+        binding.apply {
+            if (warningMessage.isNotEmpty()) {
+                warningOverlay.visibility = View.VISIBLE
+                warningMessageText.visibility = View.VISIBLE
+                warningMessageText.text = warningMessage.toString()
+                feedbackTextView.visibility = View.GONE
+            } else {
+                warningOverlay.visibility = View.GONE
+                warningMessageText.visibility = View.GONE
+                feedbackTextView.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun setupCamera() {
         val options = AccuratePoseDetectorOptions.Builder()
             .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
             .build()
@@ -57,9 +132,6 @@ class TestFragment : Fragment() {
         } else {
             requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
-
-        updateCounters()
-        updateState()
     }
 
     private fun startCamera() {
@@ -69,17 +141,13 @@ class TestFragment : Fragment() {
             val cameraProvider = cameraProviderFuture.get()
 
             val preview = Preview.Builder()
-                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                .setTargetRotation(binding.viewFinder.display.rotation)
                 .build()
                 .also {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
             val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setOutputImageRotationEnabled(true)
                 .build()
 
             imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
@@ -92,19 +160,13 @@ class TestFragment : Fragment() {
 
                     poseDetector.process(image)
                         .addOnSuccessListener { pose ->
-                            if (pose.allPoseLandmarks.isNotEmpty()) {
-                                binding.poseOverlayView.updatePose(pose)
+                            binding.poseOverlayView.updatePose(pose)
+                            if (!isExercisePaused) {
                                 processSquatState(pose)
-                            } else {
-                                activity?.runOnUiThread {
-                                    binding.feedbackTextView.text = "No pose detected"
-                                }
                             }
                         }
                         .addOnFailureListener { e ->
-                            activity?.runOnUiThread {
-                                binding.feedbackTextView.text = "Detection failed: ${e.message}"
-                            }
+                            Log.e(TAG, "Pose detection failed: ${e.message}")
                         }
                         .addOnCompleteListener {
                             imageProxy.close()
@@ -114,20 +176,18 @@ class TestFragment : Fragment() {
                 }
             }
 
-            val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                .build()
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
                 cameraProvider.unbindAll()
-                val camera = cameraProvider.bindToLifecycle(
+                cameraProvider.bindToLifecycle(
                     viewLifecycleOwner,
                     cameraSelector,
                     preview,
                     imageAnalysis
                 )
             } catch (exc: Exception) {
-                exc.printStackTrace()
+                Log.e(TAG, "Use case binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
@@ -174,24 +234,38 @@ class TestFragment : Fragment() {
         }
     }
 
-    private fun updateAngleDisplay() {
-        binding.angleText.text = String.format("Angle: %.1f°", currentKneeAngle)
-    }
-
-    fun incrementCorrectCount() {
-        correctCount++
-        activity?.runOnUiThread {
-            updateCounters()
-        }
+    private fun updateVitalSignsDisplay() {
+        binding.heartRateText.text = "Heart Rate: $heartRate bpm"
+        binding.spO2Text.text = "SpO2: $spO2%"
     }
 
     private fun updateCounters() {
-        binding.correctCountText.text = "Correct: $correctCount"
-        binding.incorrectCountText.text = "Incorrect: $incorrectCount"
+        binding.apply {
+            correctCountText.text = "Correct: $correctCount"
+            incorrectCountText.text = "Incorrect: $incorrectCount"
+        }
     }
 
     private fun updateState() {
         binding.stateText.text = "State: $currentState"
+    }
+
+    private fun incrementCorrectCount() {
+        if (!isExercisePaused) {
+            correctCount++
+            updateCounters()
+        }
+    }
+
+    private fun incrementIncorrectCount() {
+        if (!isExercisePaused) {
+            incorrectCount++
+            updateCounters()
+        }
+    }
+
+    private fun updateAngleDisplay() {
+        binding.angleText.text = String.format("Angle: %.1f°", currentKneeAngle)
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -224,6 +298,7 @@ class TestFragment : Fragment() {
     }
 
     companion object {
+        private const val TAG = "TestFragment"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }

@@ -2,9 +2,10 @@ package com.example.fypapp
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Color
+import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,7 +22,6 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.pose.Pose
 import com.google.mlkit.vision.pose.PoseDetection
 import com.google.mlkit.vision.pose.PoseDetector
 import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
@@ -31,19 +31,30 @@ import java.util.concurrent.Executors
 class TestFragment : Fragment() {
     private var _binding: FragmentTestBinding? = null
     private val binding get() = _binding!!
+
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var poseDetector: PoseDetector
     private lateinit var database: DatabaseReference
+    private lateinit var poseClassifier: PoseClassifier
 
-    private var correctCount = 0
-    private var incorrectCount = 0
-    private var currentState = "STANDING"
-    private var isFullBodyVisible = false
-    private var currentKneeAngle: Float = 0f
     private var heartRate = 0
     private var spO2 = 0
     private var isExercisePaused = false
     private var warningMessage = StringBuilder()
+
+
+
+
+    private companion object {
+        private const val TAG = "TestFragment"
+        private const val REQUEST_CODE_PERMISSIONS = 10
+        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+        private const val STANDING_ANGLE_THRESHOLD = 165f
+        private const val SQUAT_ANGLE_THRESHOLD = 120f
+        private const val MIN_CONFIDENCE = 0.65f
+    }
+
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -56,66 +67,16 @@ class TestFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         database = Firebase.database("https://fyp2024-abd3c-default-rtdb.firebaseio.com/").reference
+        poseClassifier = PoseClassifier()
 
         setupCamera()
         setupVitalSignsMonitoring()
-        updateCounters()
-        updateState()
-    }
 
-    private fun setupVitalSignsMonitoring() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                heartRate = (snapshot.child("heart_rate").value as? Long)?.toInt() ?: 0
-                spO2 = (snapshot.child("SPO2").value as? Long)?.toInt() ?: 0
-
-                activity?.runOnUiThread {
-                    updateVitalSignsDisplay()
-                    checkVitalSigns()
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Error: ${error.message}")
-            }
-        })
-    }
-
-    private fun checkVitalSigns() {
-        warningMessage.clear()
-        var shouldPause = false
-
-        when {
-            heartRate < 60 -> {
-                warningMessage.append("WARNING!\n\nHeart rate too low!\n($heartRate bpm)\n\nPlease take a rest!")
-                shouldPause = true
-            }
-            heartRate > 100 -> {
-                warningMessage.append("WARNING!\n\nHeart rate too high!\n($heartRate bpm)\n\nPlease take a rest!")
-                shouldPause = true
-            }
-        }
-
-        if (spO2 < 95) {
-            if (warningMessage.isNotEmpty()) warningMessage.append("\n\n")
-            warningMessage.append("WARNING!\n\nSpO2 too low!\n($spO2%)\n\nPlease take a rest!")
-            shouldPause = true
-        }
-
-        isExercisePaused = shouldPause
-
-        binding.apply {
-            if (warningMessage.isNotEmpty()) {
-                warningOverlay.visibility = View.VISIBLE
-                warningMessageText.visibility = View.VISIBLE
-                warningMessageText.text = warningMessage.toString()
-                feedbackTextView.visibility = View.GONE
-            } else {
-                warningOverlay.visibility = View.GONE
-                warningMessageText.visibility = View.GONE
-                feedbackTextView.visibility = View.VISIBLE
-            }
+        binding.resetButton.setOnClickListener {
+            poseClassifier.reset()
+            updateCounters(0, 0f)
         }
     }
 
@@ -141,12 +102,14 @@ class TestFragment : Fragment() {
             val cameraProvider = cameraProviderFuture.get()
 
             val preview = Preview.Builder()
+                .setTargetResolution(Size(1080, 1920))  // Changed resolution to be more standard
                 .build()
                 .also {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
             val imageAnalysis = ImageAnalysis.Builder()
+                .setTargetResolution(Size(1080, 1920))  // Changed resolution to be more standard
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 
@@ -162,7 +125,13 @@ class TestFragment : Fragment() {
                         .addOnSuccessListener { pose ->
                             binding.poseOverlayView.updatePose(pose)
                             if (!isExercisePaused) {
-                                processSquatState(pose)
+                                val screenRect = RectF(
+                                    0f, 0f,
+                                    binding.viewFinder.width.toFloat(),
+                                    binding.viewFinder.height.toFloat()
+                                )
+                                val result = poseClassifier.processFrame(pose, screenRect)
+                                updateUI(result)
                             }
                         }
                         .addOnFailureListener { e ->
@@ -176,62 +145,111 @@ class TestFragment : Fragment() {
                 }
             }
 
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
+            // Try front camera first, fall back to back camera
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    viewLifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageAnalysis
-                )
+
+                // Try to bind with front camera
+                try {
+                    val frontCameraSelector = CameraSelector.Builder()
+                        .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                        .build()
+
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        frontCameraSelector,
+                        preview,
+                        imageAnalysis
+                    )
+                } catch (exc: Exception) {
+                    // If front camera fails, try back camera
+                    Log.e(TAG, "Front camera not available, trying back camera")
+                    val backCameraSelector = CameraSelector.Builder()
+                        .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                        .build()
+
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        backCameraSelector,
+                        preview,
+                        imageAnalysis
+                    )
+                }
             } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
+                // If both cameras fail, try default camera
+                Log.e(TAG, "Specific camera selection failed, trying default camera")
+                try {
+                    val defaultCameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        defaultCameraSelector,
+                        preview,
+                        imageAnalysis
+                    )
+                } catch (exc: Exception) {
+                    Log.e(TAG, "Use case binding failed", exc)
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to start camera",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
-    private fun processSquatState(pose: Pose) {
-        isFullBodyVisible = binding.poseOverlayView.isFullBodyInFrame(pose)
-
-        if (!isFullBodyVisible) {
-            activity?.runOnUiThread {
-                binding.feedbackTextView.text = "Please step back to show full body"
-            }
-            return
-        }
-
-        val kneeAngle = binding.poseOverlayView.calculateKneeAngle(pose)
-        if (kneeAngle == null) {
-            activity?.runOnUiThread {
-                binding.feedbackTextView.text = "Cannot detect knee angle"
-            }
-            return
-        }
-
-        currentKneeAngle = kneeAngle
-
-        val newState = when {
-            kneeAngle < 110 -> "SQUATTING"
-            else -> "STANDING"
-        }
-
-        if (currentState == "SQUATTING" && newState == "STANDING") {
-            incrementCorrectCount()
-        }
-
-        currentState = newState
-
+    private fun updateUI(result: ClassificationResult) {
         activity?.runOnUiThread {
-            updateAngleDisplay()
-            binding.feedbackTextView.text = when (newState) {
-                "SQUATTING" -> "Good! Now stand up"
-                "STANDING" -> "Bend your knees more"
-                else -> "Keep your form"
+            binding.apply {
+                stateText.text = "State: ${result.pose.uppercase()}"
+                updateCounters(result.repCount, result.angle)
+                feedbackTextView.text = result.feedback
+
+                // Update visibility based on pose state
+                when (result.pose) {
+                    "unknown" -> {
+                        warningOverlay.visibility = View.VISIBLE
+                        warningMessageText.visibility = View.VISIBLE
+                        warningMessageText.text = result.feedback
+                        feedbackTextView.visibility = View.GONE
+                    }
+                    else -> {
+                        if (warningMessage.isEmpty()) {
+                            warningOverlay.visibility = View.GONE
+                            warningMessageText.visibility = View.GONE
+                            feedbackTextView.visibility = View.VISIBLE
+                        }
+                    }
+                }
             }
-            updateState()
         }
+    }
+
+    private fun updateCounters(repCount: Int, angle: Float) {
+        activity?.runOnUiThread {
+            binding.apply {
+                correctCountText.text = "Correct: $repCount"
+                angleText.text = String.format("Angle: %.1f°", angle)
+            }
+        }
+    }
+
+    private fun setupVitalSignsMonitoring() {
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                heartRate = (snapshot.child("heart_rate").value as? Long)?.toInt() ?: 0
+                spO2 = (snapshot.child("SPO2").value as? Long)?.toInt() ?: 0
+
+                activity?.runOnUiThread {
+                    updateVitalSignsDisplay()
+                    checkVitalSigns()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Error: ${error.message}")
+            }
+        })
     }
 
     private fun updateVitalSignsDisplay() {
@@ -239,33 +257,41 @@ class TestFragment : Fragment() {
         binding.spO2Text.text = "SpO2: $spO2%"
     }
 
-    private fun updateCounters() {
+    private fun checkVitalSigns() {
+        warningMessage.clear()
+        var shouldPause = false
+
+        when {
+            heartRate < 60 -> {
+                warningMessage.append("Heart rate too low ($heartRate bpm)\nPlease take a rest!")
+                shouldPause = true
+            }
+            heartRate > 100 -> {
+                warningMessage.append("Heart rate too high ($heartRate bpm)\nPlease take a rest!")
+                shouldPause = true
+            }
+        }
+
+        if (spO2 < 95) {
+            if (warningMessage.isNotEmpty()) warningMessage.append("\n\n")
+            warningMessage.append("SpO2 too low ($spO2%)\nPlease take a rest!")
+            shouldPause = true
+        }
+
+        isExercisePaused = shouldPause
+
         binding.apply {
-            correctCountText.text = "Correct: $correctCount"
-            incorrectCountText.text = "Incorrect: $incorrectCount"
+            if (warningMessage.isNotEmpty()) {
+                warningOverlay.visibility = View.VISIBLE
+                warningMessageText.visibility = View.VISIBLE
+                warningMessageText.text = warningMessage.toString()
+                feedbackTextView.visibility = View.GONE
+            } else {
+                warningOverlay.visibility = View.GONE
+                warningMessageText.visibility = View.GONE
+                feedbackTextView.visibility = View.VISIBLE
+            }
         }
-    }
-
-    private fun updateState() {
-        binding.stateText.text = "State: $currentState"
-    }
-
-    private fun incrementCorrectCount() {
-        if (!isExercisePaused) {
-            correctCount++
-            updateCounters()
-        }
-    }
-
-    private fun incrementIncorrectCount() {
-        if (!isExercisePaused) {
-            incorrectCount++
-            updateCounters()
-        }
-    }
-
-    private fun updateAngleDisplay() {
-        binding.angleText.text = String.format("Angle: %.1f°", currentKneeAngle)
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -295,11 +321,5 @@ class TestFragment : Fragment() {
         super.onDestroyView()
         cameraExecutor.shutdown()
         _binding = null
-    }
-
-    companion object {
-        private const val TAG = "TestFragment"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }

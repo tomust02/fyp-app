@@ -201,7 +201,15 @@ class TestFragment : Fragment() {
     private fun updateUI(result: ClassificationResult) {
         activity?.runOnUiThread {
             binding.apply {
-                stateText.text = "State: ${result.pose.uppercase()}"
+                // Convert the enum state names to display text
+                val displayState = when(result.pose.uppercase()) {
+                    "S1" -> "Standing State"
+                    "S2" -> "Transition State"
+                    "S3" -> "Squat State"
+                    "UNKNOWN" -> "Unknown"
+                    else -> result.pose.uppercase()
+                }
+                stateText.text = "State: $displayState"
                 updateCounters(result.repCount, result.angle)
                 feedbackTextView.text = result.feedback
 

@@ -1,18 +1,14 @@
 package com.example.fypapp
 
+import android.content.Context.SENSOR_SERVICE
+import android.hardware.SensorManager
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
-
-
+import androidx.fragment.app.Fragment
+import com.google.firebase.database.*
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Call
@@ -42,34 +38,50 @@ class HomeFragment : Fragment() {
     private lateinit var databaseRef: DatabaseReference
     private lateinit var heartRateTextView: TextView
     private lateinit var spo2TextView: TextView
-
     private lateinit var dateTextView: TextView
     private lateinit var weatherTextView: TextView
+    private lateinit var stepsTextView: TextView
+    private lateinit var stepDetector: StepDetector
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
-        // Inflate the layout and initialize the view object
         val view = inflater.inflate(R.layout.fragment_home, container, false)
 
-        // Initialize heartRateTextView, spo2TextView, and databaseRef
         heartRateTextView = view.findViewById(R.id.heart_rate)
         spo2TextView = view.findViewById(R.id.spo2)
-        databaseRef = FirebaseDatabase.getInstance().getReference()
-
+        stepsTextView = view.findViewById(R.id.steps)
         dateTextView = view.findViewById(R.id.dateTextView)
         weatherTextView = view.findViewById(R.id.weatherTextView)
+        databaseRef = FirebaseDatabase.getInstance().getReference()
 
-
-        // Call readdata function to read data from Firebase
         readdata()
         displayCurrentDate()
         fetchWeatherData()
 
-        // Return the inflated view
         return view
+    }
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+        val sensorManager = requireActivity().getSystemService(SENSOR_SERVICE) as SensorManager
+        stepDetector = StepDetector(requireContext(), sensorManager)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        stepDetector.start()
+        updateStepCount()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stepDetector.stop()
+    }
+
+    private fun updateStepCount() {
+        stepsTextView.text = stepDetector.getStepCount().toString()
     }
 
     private fun displayCurrentDate() {
@@ -111,27 +123,22 @@ class HomeFragment : Fragment() {
     }
 
     private fun readdata() {
-        // Read heart rate data
         databaseRef.child("heart_rate").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val heartRate = snapshot.getValue(Int::class.java)
                 heartRateTextView.text = heartRate?.toString() ?: "N/A"
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                // Handle possible errors.
-            }
+            override fun onCancelled(error: DatabaseError) {}
         })
 
-        // Read spo2 data
         databaseRef.child("SPO2").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val spo2 = snapshot.getValue(Int::class.java)
                 spo2TextView.text = spo2?.toString() ?: "N/A"
             }
-            override fun onCancelled(error: DatabaseError) {
-                // Handle possible errors.
-            }
+
+            override fun onCancelled(error: DatabaseError) {}
         })
     }
 }

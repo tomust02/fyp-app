@@ -7,6 +7,26 @@
     <string name="next">Next</string>
     <string name="previous">Previous</string>
 
+
+
+    <string-array name="sex_options">
+        <item>Male</item>
+        <item>Female</item>
+    </string-array>
+    <string-array name="yes_no_options">
+        <item>Yes</item>
+        <item>No</item>
+    </string-array>
+    <string-array name="chest_pain_options">
+        <item>Typical Angina (TA) - Pain from activity/stress</item>
+        <item>Atypical Angina (ATA) - Unusual chest discomfort</item>
+        <item>Non-Anginal Pain (NAP) - Not heart-related</item>
+        <item>Asymptomatic (ASY) - No chest pain</item>
+    </string-array>
+
+
+
+
     <string name="lorem_ipsum">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
         volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus

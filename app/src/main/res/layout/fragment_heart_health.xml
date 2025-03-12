@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Please input the following information:"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/ageInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Age"
+            android:inputType="number"
+            android:padding="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sex:"
+            android:textStyle="bold"
+            android:textSize="20dp" />
+
+
+        <Spinner
+            android:id="@+id/sexSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Max heart rate:"
+            android:textStyle="bold"
+            android:textSize="20dp" />
+
+        <TextView
+            android:id="@+id/maxHRText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MaxHR: Loading..."
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Exercise Angina:"
+            android:textStyle="bold"
+            android:textSize="20dp" />
+
+        <Spinner
+            android:id="@+id/exerciseAnginaSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chest Pain Type:"
+            android:textStyle="bold"
+            android:textSize="20dp" />
+
+        <Spinner
+            android:id="@+id/chestPainTypeSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp" />
+
+        <Button
+            android:id="@+id/predictButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Predict Risk"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:id="@+id/riskTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Heart Disease Risk: N/A"
+            android:textSize="20sp"
+            android:layout_gravity="center"
+            android:layout_marginTop="16dp" />
+    </LinearLayout>
+</layout>

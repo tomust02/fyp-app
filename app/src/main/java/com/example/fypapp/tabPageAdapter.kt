@@ -18,6 +18,7 @@ class TabPageAdapter (activity: FragmentActivity, private  val tabCount: Int): F
         return  when (position){
             0->HomeFragment()
             1->TestFragment()
+            2->HeartHealthFragment()
             else ->HomeFragment()
         }
     }

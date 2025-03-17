@@ -42,6 +42,8 @@ class TestFragment : Fragment() {
     private var isExercisePaused = false
     private var warningMessage = StringBuilder()
 
+    private var currentExerciseType = ExerciseType.SQUAT
+
 
 
 
@@ -73,10 +75,24 @@ class TestFragment : Fragment() {
 
         setupCamera()
         setupVitalSignsMonitoring()
+        setupButtons()
+    }
 
+    private fun setupButtons() {
         binding.resetButton.setOnClickListener {
             poseClassifier.reset()
             updateCounters(0, 0f)
+        }
+
+        binding.exerciseToggleButton.setOnClickListener {
+            currentExerciseType = if (currentExerciseType == ExerciseType.SQUAT) {
+                binding.exerciseToggleButton.text = "Switch to Squat"
+                ExerciseType.PUSHUP
+            } else {
+                binding.exerciseToggleButton.text = "Switch to Push-up"
+                ExerciseType.SQUAT
+            }
+            poseClassifier.setExerciseType(currentExerciseType)
         }
     }
 
@@ -270,17 +286,17 @@ class TestFragment : Fragment() {
         var shouldPause = false
 
         when {
-            heartRate < 60 -> {
+            heartRate < 0 -> {
                 warningMessage.append("Heart rate too low ($heartRate bpm)\nPlease take a rest!")
                 shouldPause = true
             }
-            heartRate > 100 -> {
+            heartRate > 300 -> {
                 warningMessage.append("Heart rate too high ($heartRate bpm)\nPlease take a rest!")
                 shouldPause = true
             }
         }
 
-        if (spO2 < 95) {
+        if (spO2 < 0) {
             if (warningMessage.isNotEmpty()) warningMessage.append("\n\n")
             warningMessage.append("SpO2 too low ($spO2%)\nPlease take a rest!")
             shouldPause = true

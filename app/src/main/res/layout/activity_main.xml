@@ -46,6 +46,12 @@
                 android:icon="@drawable/baseline_accessibility_24"
                 android:text="Posture" />
 
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:icon="@drawable/baseline_heart_broken_24"
+                android:text="Heart" />
+
         </com.google.android.material.tabs.TabLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

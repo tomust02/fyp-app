@@ -63,24 +63,11 @@ class MainActivity() : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //such that you can show text view
-        //setContentView(R.layout.activity_main);
 
         //real time
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-
-
-        //test firebase connection
-//        databaseRef = FirebaseDatabase.getInstance().getReference("test")
-//
-//        binding.hello.setOnClickListener{
-//            databaseRef.setValue("test123 ok")
-//                .addOnSuccessListener {
-//                    Toast.makeText(this,"data stroed seccessfully", Toast.LENGTH_LONG)
-//                }
-//        }
 
         setupTabBar()
 
@@ -109,12 +96,13 @@ class MainActivity() : AppCompatActivity() {
 
 
     private fun setupTabBar() {
-        val adapter = TabPageAdapter(this, 2)
+        val adapter = TabPageAdapter(this, 3)
         binding.viewPager.adapter = adapter
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> "Home"
-                1 -> "Test"
+                1 -> "posture"
+                2 -> "Heart Health"
                 else -> "Home"
             }
         }.attach()

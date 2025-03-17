@@ -4,6 +4,7 @@ plugins {
 
     //id("com.android.application")
     id("com.google.gms.google-services")
+
 }
 
 android {
@@ -37,6 +38,7 @@ android {
         jvmTarget = "11"
     }
     buildFeatures {
+        dataBinding = true
         viewBinding = true
     }
 }
@@ -51,6 +53,8 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.database)
+    implementation(libs.litert)
+    implementation(libs.firebase.ml.modeldownloader.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

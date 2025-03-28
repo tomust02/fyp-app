@@ -19,6 +19,7 @@ class TabPageAdapter (activity: FragmentActivity, private  val tabCount: Int): F
             0->HomeFragment()
             1->TestFragment()
             2->HeartHealthFragment()
+            3->HeartDataFragment()
             else ->HomeFragment()
         }
     }

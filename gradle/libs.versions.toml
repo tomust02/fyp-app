@@ -9,12 +9,14 @@ espressoCore = "3.5.1"
 appcompat = "1.6.1"
 material = "1.10.0"
 constraintlayout = "2.1.4"
+mpandroidchart = "v3.1.0"
 navigationFragmentKtx = "2.6.0"
 navigationUiKtx = "2.6.0"
 firebaseFirestore = "25.1.0"
 firebaseDatabase = "21.0.0"
 litert = "1.0.1"
 firebaseMlModeldownloaderKtx = "25.0.1"
+
 
 [libraries]
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraxVersion" }
@@ -36,6 +38,8 @@ firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
 firebase-ml-modeldownloader-ktx = { group = "com.google.firebase", name = "firebase-ml-modeldownloader-ktx", version.ref = "firebaseMlModeldownloaderKtx" }
+mpandroidchart = { module = "com.github.PhilJay:MPAndroidChart", version.ref = "mpandroidchart" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

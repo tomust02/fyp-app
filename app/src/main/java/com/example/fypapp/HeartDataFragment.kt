@@ -50,9 +50,9 @@ class HeartDataFragment : Fragment() {
 
         // Set different colors and y-axis ranges for the graphs
         binding.heartRateGraph.setLineColor(android.graphics.Color.RED)
-        binding.heartRateGraph.setYRange(50f, 200f) // Raw heart rate range
+        binding.heartRateGraph.setYRange(0f, 200f) // Raw heart rate range
         binding.spo2Graph.setLineColor(android.graphics.Color.BLUE)
-        binding.spo2Graph.setYRange(50f, 200f) // Smoothed heart rate range (same as raw)
+        binding.spo2Graph.setYRange(0f, 200f) // Smoothed heart rate range (same as raw)
 
         // Fetch heart rate data
         fetchHeartRateData()

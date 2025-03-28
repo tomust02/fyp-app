@@ -101,7 +101,7 @@ class HeartRateGraphView @JvmOverloads constructor(
             val x = paddingLeft + relativeIndex * graphWidth / windowSize
             val label = relativeIndex.toString()
             // Draw x-axis labels further below to avoid overlap
-            canvas.drawText(label, x, height - paddingBottom + 50f, paintText.apply { textAlign = Paint.Align.CENTER })
+            canvas.drawText(label, x, height - paddingBottom + 30f, paintText.apply { textAlign = Paint.Align.CENTER })
             Log.d("HeartRateGraphView", "Drawing x-axis label: $label at x=$x")
         }
 

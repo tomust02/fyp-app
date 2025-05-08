@@ -8,7 +8,6 @@
     <string name="previous">Previous</string>
 
 
-
     <string-array name="sex_options">
         <item>Male</item>
         <item>Female</item>
@@ -23,8 +22,6 @@
         <item>Non-Anginal Pain (NAP) - Not heart-related</item>
         <item>Asymptomatic (ASY) - No chest pain</item>
     </string-array>
-
-
 
 
     <string name="lorem_ipsum">

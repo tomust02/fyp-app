@@ -70,6 +70,8 @@ class MainActivity() : AppCompatActivity() {
 
 
         setupTabBar()
+//        simulateHealthData()
+
 
 //        //Firestore
 //        val db=FirebaseFirestore.getInstance()
@@ -96,13 +98,14 @@ class MainActivity() : AppCompatActivity() {
 
 
     private fun setupTabBar() {
-        val adapter = TabPageAdapter(this, 3)
+        val adapter = TabPageAdapter(this, 4)
         binding.viewPager.adapter = adapter
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> "Home"
                 1 -> "posture"
                 2 -> "Heart Health"
+                3 -> "Heart Data"
                 else -> "Home"
             }
         }.attach()
@@ -125,6 +128,19 @@ class MainActivity() : AppCompatActivity() {
             }
         })
     }
+
+//    fun simulateHealthData() {
+//        val databaseRef = FirebaseDatabase.getInstance().getReference()
+//        val timer = java.util.Timer()
+//        timer.schedule(object : java.util.TimerTask() {
+//            override fun run() {
+//                val heartRate = (60 + java.util.Random().nextInt(120)) // Random heart rate between 60 and 180
+//                val spo2 = (90 + java.util.Random().nextInt(10)) // Random SpO2 between 90 and 100
+//                databaseRef.child("heart_rate").setValue(heartRate)
+//                databaseRef.child("SPO2").setValue(spo2)
+//            }
+//        }, 0, 2000) // Update every 2 seconds
+//    }
 
 
 

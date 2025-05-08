@@ -39,13 +39,14 @@ class TestFragment : Fragment() {
 
     private var heartRate = 0
     private var spO2 = 0
+    private var breathingRate = 0  // Added breathing rate variable
+    private var breathingStatus = "Unknown"  // Added breathing status variable
+    private var breathingSensorValue = 0  // Added breathing sensor value variable
+
     private var isExercisePaused = false
     private var warningMessage = StringBuilder()
 
     private var currentExerciseType = ExerciseType.SQUAT
-
-
-
 
     private companion object {
         private const val TAG = "TestFragment"
@@ -55,8 +56,6 @@ class TestFragment : Fragment() {
         private const val SQUAT_ANGLE_THRESHOLD = 120f
         private const val MIN_CONFIDENCE = 0.65f
     }
-
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -259,6 +258,7 @@ class TestFragment : Fragment() {
     }
 
     private fun setupVitalSignsMonitoring() {
+        // Listen for heart rate and SpO2 data
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 heartRate = (snapshot.child("heart_rate").value as? Long)?.toInt() ?: 0
@@ -274,11 +274,45 @@ class TestFragment : Fragment() {
                 Log.e(TAG, "Error: ${error.message}")
             }
         })
+
+        // Listen for breathing data separately
+        database.child("breathingData").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                breathingRate = (snapshot.child("rate").value as? Long)?.toInt() ?: 0
+                breathingStatus = snapshot.child("status").value as? String ?: "Unknown"
+                breathingSensorValue = (snapshot.child("sensorValue").value as? Long)?.toInt() ?: 0
+
+                activity?.runOnUiThread {
+                    updateBreathingDisplay()
+                    checkVitalSigns()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Error reading breathing data: ${error.message}")
+            }
+        })
     }
 
     private fun updateVitalSignsDisplay() {
         binding.heartRateText.text = "Heart Rate: $heartRate bpm"
         binding.spO2Text.text = "SpO2: $spO2%"
+    }
+
+    private fun updateBreathingDisplay() {
+        // Define normal breathing rate range (typically 12-20 breaths per minute at rest)
+        val minNormalBreathingRate = 12
+        val maxNormalBreathingRate = 20
+
+        // Determine breathing status display text
+        val displayStatus = when {
+            breathingRate == 0 -> "No breathing detected"
+            breathingRate < minNormalBreathingRate || breathingRate > maxNormalBreathingRate -> "Abnormal"
+            else -> "Normal"
+        }
+
+        // Update the text view with both the numerical rate and the status
+        binding.breathingRateText.text = "Breathing: $breathingRate bpm\n$displayStatus"
     }
 
     private fun checkVitalSigns() {
@@ -299,6 +333,13 @@ class TestFragment : Fragment() {
         if (spO2 < 0) {
             if (warningMessage.isNotEmpty()) warningMessage.append("\n\n")
             warningMessage.append("SpO2 too low ($spO2%)\nPlease take a rest!")
+            shouldPause = true
+        }
+
+        // Add breathing rate warning check if needed
+        if (breathingStatus.contains("No breathing detected") && breathingRate == 0) {
+            if (warningMessage.isNotEmpty()) warningMessage.append("\n\n")
+            warningMessage.append("Warning: $breathingStatus\nPlease check your breathing sensor!")
             shouldPause = true
         }
 

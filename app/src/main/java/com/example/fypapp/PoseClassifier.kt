@@ -18,7 +18,6 @@ data class ClassificationResult(
     val feedback: String
 )
 
-
 class PoseClassifier {
     private var currentExercise = ExerciseType.SQUAT
     private var previousPose = PoseState.S1
@@ -29,31 +28,33 @@ class PoseClassifier {
     private var lastValidAngle = 180f
     private val stateSequence = mutableListOf<PoseState>()
 
+    // Track form status throughout the entire rep
+    private var currentRepHasGoodForm = true
+
     companion object {
-        private const val MIN_CONFIDENCE = 0.65f
-        private const val REP_COOLDOWN_MS = 1500L
+        private const val MIN_CONFIDENCE = 0.6f  // Slightly reduced confidence threshold
+        private const val REP_COOLDOWN_MS = 1000L  // Reduced cooldown for more responsive counting
 
-        // Squat angle thresholds
-        private const val SQUAT_NORMAL_THRESHOLD = 32f
-        private const val SQUAT_TRANSITION_MIN = 35f
-        private const val SQUAT_TRANSITION_MAX = 65f
-        private const val SQUAT_DOWN_MIN = 75f
-        private const val SQUAT_DOWN_MAX = 95f
+        // Squat angle thresholds - more forgiving
+        private const val SQUAT_NORMAL_THRESHOLD = 40f  // Increased from 32f
+        private const val SQUAT_TRANSITION_MIN = 41f    // Increased minimum
+        private const val SQUAT_TRANSITION_MAX = 70f    // Increased maximum
+        private const val SQUAT_DOWN_MIN = 71f          // Decreased minimum
+        private const val SQUAT_DOWN_MAX = 120f         // Increased maximum range
 
-        // Push-up angle thresholds
-        private const val PUSHUP_UP_THRESHOLD = 150f
+        // Push-up angle thresholds - more forgiving
+        private const val PUSHUP_UP_THRESHOLD = 140f    // Decreased from 150f
+        private const val PUSHUP_TRANSITION_MIN = 85f   // Decreased minimum
+        private const val PUSHUP_TRANSITION_MAX = 139f  // Increased maximum
+        private const val PUSHUP_DOWN_MIN = 55f         // Decreased minimum
+        private const val PUSHUP_DOWN_MAX = 90f         // Increased maximum range
 
-        private const val PUSHUP_TRANSITION_MIN = 90f
-        private const val PUSHUP_TRANSITION_MAX = 130f
-        private const val PUSHUP_DOWN_MIN = 60f
-        private const val PUSHUP_DOWN_MAX = 85f
-
-        // Form check thresholds
-        private const val HIP_FORWARD_THRESHOLD = 20f
-        private const val HIP_BACKWARD_THRESHOLD = 45f
-        private const val KNEE_OVER_TOE_THRESHOLD = 30f
-        private const val MAX_ANGLE_CHANGE_PER_FRAME = 15f
-        private const val PUSHUP_HIP_SAG_THRESHOLD = 15f
+        // Form check thresholds - much more forgiving
+        private const val HIP_FORWARD_THRESHOLD = 10f         // Decreased from 20f
+        private const val HIP_BACKWARD_THRESHOLD = 60f        // Increased from 45f
+        private const val KNEE_OVER_TOE_THRESHOLD = 45f       // Increased from 30f
+        private const val MAX_ANGLE_CHANGE_PER_FRAME = 20f    // Increased from 15f
+        private const val PUSHUP_HIP_SAG_THRESHOLD = 25f      // Increased from 15f
     }
 
     fun setExerciseType(type: ExerciseType) {
@@ -98,10 +99,42 @@ class PoseClassifier {
 
         val (isProperForm, feedback) = checkSquatForm(hipAngle, kneeAnkleAngle, currentState)
 
+        // Only mark as bad form for severe form issues
+        if (!isProperForm && (hipAngle < 5f || hipAngle > 75f || kneeAnkleAngle > 60f)) {
+            currentRepHasGoodForm = false
+        }
+
+        // Reset form tracking when starting a new rep
+        if (currentState == PoseState.S1 && previousPose != PoseState.S1) {
+            currentRepHasGoodForm = true
+        }
+
         if (shouldCountRep()) {
-            repCounter++
-            lastValidRepTime = System.currentTimeMillis()
-            stateSequence.clear()
+            // More forgiving rep counting - count unless form was severely bad
+            if (currentRepHasGoodForm) {
+                repCounter++
+                lastValidRepTime = System.currentTimeMillis()
+                stateSequence.clear()
+                return ClassificationResult(
+                    currentState.name.lowercase(),
+                    calculateConfidence(pose),
+                    repCounter,
+                    smoothedHipKneeAngle,
+                    "Great job! Rep counted"
+                )
+            } else {
+                // Only for severe form issues, don't count the rep
+                lastValidRepTime = System.currentTimeMillis()
+                stateSequence.clear()
+                currentRepHasGoodForm = true  // Reset for next rep
+                return ClassificationResult(
+                    currentState.name.lowercase(),
+                    calculateConfidence(pose),
+                    repCounter,
+                    smoothedHipKneeAngle,
+                    "Rep not counted - try with better form"
+                )
+            }
         }
 
         previousPose = currentState
@@ -135,10 +168,42 @@ class PoseClassifier {
 
         val (isProperForm, feedback) = checkPushupForm(hipAngle, smoothedElbowAngle, currentState)
 
+        // Only mark as bad form for severe form issues
+        if (!isProperForm && (abs(hipAngle - 180f) > 35f || elbowAngle < 50f)) {
+            currentRepHasGoodForm = false
+        }
+
+        // Reset form tracking when starting a new rep
+        if (currentState == PoseState.S1 && previousPose != PoseState.S1) {
+            currentRepHasGoodForm = true
+        }
+
         if (shouldCountRep()) {
-            repCounter++
-            lastValidRepTime = System.currentTimeMillis()
-            stateSequence.clear()
+            // More forgiving rep counting - count unless form was severely bad
+            if (currentRepHasGoodForm) {
+                repCounter++
+                lastValidRepTime = System.currentTimeMillis()
+                stateSequence.clear()
+                return ClassificationResult(
+                    currentState.name.lowercase(),
+                    calculateConfidence(pose),
+                    repCounter,
+                    smoothedElbowAngle,
+                    "Great job! Rep counted"
+                )
+            } else {
+                // Only for severe form issues, don't count the rep
+                lastValidRepTime = System.currentTimeMillis()
+                stateSequence.clear()
+                currentRepHasGoodForm = true  // Reset for next rep
+                return ClassificationResult(
+                    currentState.name.lowercase(),
+                    calculateConfidence(pose),
+                    repCounter,
+                    smoothedElbowAngle,
+                    "Rep not counted - try with better form"
+                )
+            }
         }
 
         previousPose = currentState
@@ -182,7 +247,7 @@ class PoseClassifier {
         return when {
             angle <= SQUAT_NORMAL_THRESHOLD -> PoseState.S1
             angle in SQUAT_TRANSITION_MIN..SQUAT_TRANSITION_MAX -> PoseState.S2
-            angle in SQUAT_DOWN_MIN..SQUAT_DOWN_MAX -> PoseState.S3
+            angle >= SQUAT_DOWN_MIN -> PoseState.S3  // Any value above the threshold is considered squatting
             else -> PoseState.S2
         }
     }
@@ -191,7 +256,7 @@ class PoseClassifier {
         return when {
             angle >= PUSHUP_UP_THRESHOLD -> PoseState.S1  // Up position
             angle in PUSHUP_TRANSITION_MIN..PUSHUP_TRANSITION_MAX -> PoseState.S2  // Transitioning
-            angle in PUSHUP_DOWN_MIN..PUSHUP_DOWN_MAX -> PoseState.S3  // Down position
+            angle <= PUSHUP_DOWN_MIN -> PoseState.S3  // Any value below the threshold is considered down
             else -> PoseState.S2
         }
     }
@@ -199,69 +264,104 @@ class PoseClassifier {
     private fun updateStateSequence(currentState: PoseState) {
         if (stateSequence.isEmpty() || stateSequence.last() != currentState) {
             stateSequence.add(currentState)
-            if (stateSequence.size > 3) {
+            if (stateSequence.size > 5) {  // Increased from 3 to keep more history
                 stateSequence.removeAt(0)
             }
         }
     }
 
     private fun shouldCountRep(): Boolean {
-        val validSequence = when (currentExercise) {
-            ExerciseType.SQUAT -> {
-                stateSequence.size >= 3 &&
-                        stateSequence[0] == PoseState.S2 &&
-                        stateSequence[1] == PoseState.S3 &&
-                        stateSequence[2] == PoseState.S2
-            }
-            ExerciseType.PUSHUP -> {
-                stateSequence.size >= 3 &&
-                        stateSequence[0] == PoseState.S1 &&  // Starting from up position
-                        stateSequence[1] == PoseState.S3 &&  // Going to down position
-                        stateSequence[2] == PoseState.S1     // Coming back to up position
+        // First check if we have enough states recorded
+        if (stateSequence.size < 3) {
+            return false
+        }
+
+        // Create a condensed sequence by removing duplicate consecutive states
+        val condensedSequence = mutableListOf<PoseState>()
+        stateSequence.forEach { state ->
+            if (condensedSequence.isEmpty() || condensedSequence.last() != state) {
+                condensedSequence.add(state)
             }
         }
 
-        return validSequence &&
-                System.currentTimeMillis() - lastValidRepTime > REP_COOLDOWN_MS
+        // Look for the pattern in the condensed sequence
+        var foundValidPattern = false
+        if (condensedSequence.size >= 3) {
+            for (i in 0..condensedSequence.size - 3) {
+                if (condensedSequence[i] == PoseState.S1 &&
+                    condensedSequence.subList(i, condensedSequence.size).contains(PoseState.S3) &&
+                    condensedSequence.last() == PoseState.S1) {
+                    foundValidPattern = true
+                    break
+                }
+            }
+        }
+
+        return foundValidPattern && System.currentTimeMillis() - lastValidRepTime > REP_COOLDOWN_MS
     }
 
     private fun checkSquatForm(hipAngle: Float, kneeAnkleAngle: Float, currentState: PoseState): Pair<Boolean, String> {
+        // Always consider the starting position as good form
         if (currentState == PoseState.S1) {
-            return Pair(true, "Good form!")
+            return Pair(true, "Good starting position")
         }
 
+        // Much more lenient thresholds
+        val HIP_FORWARD_THRESHOLD_LENIENT = 10f    // Very lenient leaning forward
+        val HIP_BACKWARD_THRESHOLD_LENIENT = 70f   // Very lenient leaning backward
+        val KNEE_OVER_TOE_THRESHOLD_LENIENT = 50f  // Very lenient knee position
+
+        // Only flag as incorrect form if significantly outside thresholds
         return when {
-            hipAngle < HIP_FORWARD_THRESHOLD ->
-                Pair(false, "Keep your back straight - don't lean forward")
-            hipAngle > HIP_BACKWARD_THRESHOLD ->
-                Pair(false, "Keep your back straight - don't lean backward")
-            kneeAnkleAngle > KNEE_OVER_TOE_THRESHOLD ->
-                Pair(false, "Keep your knees behind your toes")
+            hipAngle < HIP_FORWARD_THRESHOLD_LENIENT && hipAngle < 5f ->
+                Pair(false, "Try to keep your back straighter")
+            hipAngle > HIP_BACKWARD_THRESHOLD_LENIENT && hipAngle > 75f ->
+                Pair(false, "Try not to lean too far back")
+            kneeAnkleAngle > KNEE_OVER_TOE_THRESHOLD_LENIENT && kneeAnkleAngle > 60f ->
+                Pair(false, "Watch your knees over toes")
+            // Everything else is considered good form now
+            hipAngle < HIP_FORWARD_THRESHOLD_LENIENT ->
+                Pair(true, "Keep your chest up")
+            hipAngle > HIP_BACKWARD_THRESHOLD_LENIENT ->
+                Pair(true, "Lean forward slightly")
+            kneeAnkleAngle > KNEE_OVER_TOE_THRESHOLD_LENIENT ->
+                Pair(true, "Push through your heels")
             currentState == PoseState.S2 ->
-                Pair(true, "Moving - maintain form")
+                Pair(true, "Good movement")
             currentState == PoseState.S3 ->
-                Pair(true, "Hold position")
+                Pair(true, "Good depth")
             else ->
-                Pair(true, "Good form!")
+                Pair(true, "Good form")
         }
     }
 
     private fun checkPushupForm(hipAngle: Float, elbowAngle: Float, currentState: PoseState): Pair<Boolean, String> {
+        // Always consider the starting position as good form
         if (currentState == PoseState.S1) {
-            return Pair(true, "Starting position")
+            return Pair(true, "Good plank position")
         }
 
+        // More lenient thresholds
+        val PUSHUP_HIP_SAG_THRESHOLD_LENIENT = 25f   // Increased from 15f
+        val PUSHUP_DOWN_MIN_LENIENT = 50f            // Decreased from 60f
+
+        // Only flag as incorrect form if significantly outside thresholds
         return when {
-            abs(hipAngle - 180f) > PUSHUP_HIP_SAG_THRESHOLD ->
-                Pair(false, "Keep your body straight - don't sag your hips")
-            elbowAngle < PUSHUP_DOWN_MIN ->
-                Pair(false, "Don't go too low - protect your shoulders")
+            abs(hipAngle - 180f) > PUSHUP_HIP_SAG_THRESHOLD_LENIENT && abs(hipAngle - 180f) > 35f ->
+                Pair(false, "Keep your body in a straight line")
+            elbowAngle < PUSHUP_DOWN_MIN_LENIENT && elbowAngle < 45f ->
+                Pair(false, "Don't go too low")
+            // For minor form issues, give feedback but still count as good form
+            abs(hipAngle - 180f) > PUSHUP_HIP_SAG_THRESHOLD_LENIENT ->
+                Pair(true, "Tighten your core")
+            elbowAngle < PUSHUP_DOWN_MIN_LENIENT ->
+                Pair(true, "Good depth")
             currentState == PoseState.S2 ->
-                Pair(true, "Moving - maintain form")
+                Pair(true, "Good movement")
             currentState == PoseState.S3 ->
-                Pair(true, "Hold position")
+                Pair(true, "Good depth")
             else ->
-                Pair(true, "Good form!")
+                Pair(true, "Good form")
         }
     }
 
@@ -326,8 +426,6 @@ class PoseClassifier {
     private fun areAllLandmarksVisible(pose: Pose): Boolean {
         val requiredLandmarks = when (currentExercise) {
             ExerciseType.SQUAT -> listOf(
-                PoseLandmark.LEFT_SHOULDER,
-                PoseLandmark.RIGHT_SHOULDER,
                 PoseLandmark.LEFT_HIP,
                 PoseLandmark.RIGHT_HIP,
                 PoseLandmark.LEFT_KNEE,
@@ -343,17 +441,14 @@ class PoseClassifier {
                 PoseLandmark.LEFT_WRIST,
                 PoseLandmark.RIGHT_WRIST,
                 PoseLandmark.LEFT_HIP,
-                PoseLandmark.RIGHT_HIP,
-                PoseLandmark.LEFT_KNEE,
-                PoseLandmark.RIGHT_KNEE,
-                PoseLandmark.LEFT_ANKLE,
-                PoseLandmark.RIGHT_ANKLE
+                PoseLandmark.RIGHT_HIP
             )
         }
 
+        // Reduced required confidence level for landmark detection
         return requiredLandmarks.all { landmarkType ->
             val landmark = pose.getPoseLandmark(landmarkType)
-            landmark != null && landmark.inFrameLikelihood > MIN_CONFIDENCE
+            landmark != null && landmark.inFrameLikelihood > MIN_CONFIDENCE * 0.8f
         }
     }
 
@@ -365,5 +460,6 @@ class PoseClassifier {
         angleBuffer.clear()
         lastValidAngle = 180f
         stateSequence.clear()
+        currentRepHasGoodForm = true
     }
 }
